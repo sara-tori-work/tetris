@@ -254,21 +254,21 @@ p {
 
 /* --- テキスト --- */
 .game-over-box {
-	max-height: 90%;
+	max-height: 95%;
 	padding: 0 8px;
 	overflow-y: auto;
 	text-align: center;
 }
 
 .game-over-box h2 {
-	margin: 0 0 8px;
+	margin: 0 0 4px;
 	color: var(--color-accent-pink);
 	font-size: 24px;
 	text-shadow: 0 0 12px var(--color-accent-pink);
 }
 
 .game-over-box p {
-	margin: 0 0 16px;
+	margin: 0 0 8px;
 	color: var(--color-white);
 }
 
@@ -292,8 +292,8 @@ p {
 
 /* --- ハイスコア表示 --- */
 .high-scores {
-	padding: 10px 16px;
-	margin-bottom: 12px;
+	padding: 6px 12px;
+	margin-bottom: 8px;
 	border-radius: 8px;
 	background: var(--color-dark-navy);
 	text-align: left;

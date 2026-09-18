@@ -80,6 +80,8 @@ const opponentContext = opponentCanvas.getContext('2d')!;
 const opponentScoreSpan = document.querySelector<HTMLSpanElement>('#opponent-score')!;
 // 勝敗表示 取得
 const versusResultText = document.querySelector<HTMLParagraphElement>('#versus-result')!;
+// スタート画面へ戻るボタン 取得
+const returnStartButton = document.querySelector<HTMLButtonElement>('#return-start-button')!;
 
 
 /* ----------------------------------- */
@@ -746,6 +748,46 @@ restartButton.addEventListener('click', () => {
 	scheduleNextDrop(); // 止まっていた自動落下を再開
 });
 
+// スタート画面に戻るボタンの処理
+returnStartButton.addEventListener('click', () => {
+	// 対戦中なら、Realtimeの接続を切る
+	if (realtimeChannel !== null) {
+		supabase.removeChannel(realtimeChannel); // 対戦ちゅだったら通信チャンネルを明示的に切断
+		realtimeChannel = null;
+	}
+
+	isVersusMode = false;
+	currentRoomCode = null;
+	opponentWrapper.classList.add('hidden');
+	versusResultText.classList.add('hidden');
+
+	// ゲームの状態を初期化する(リスタート処理と同じ内容)
+	board = Array.from({ length: BOARD_HEIGHT }, () => Array(BOARD_WIDTH).fill(0));
+	currentTetromino = createRandomTetromino();
+	nextQueue = [
+		createRandomTetromino(),
+		createRandomTetromino(),
+	];
+	holdTetromino = null;
+	canHold = true;
+
+	if (lockDelayTimer !== undefined) {
+		clearTimeout(lockDelayTimer);
+		lockDelayTimer = undefined;
+	}
+
+	score = 0;
+	level = 1;
+	totalLinesCleared = 0;
+	isGameOver = true; // 自動落下ループを止めるため、一旦trueにしておく
+
+	scoreSpan.textContent = '0';
+	levelSpan.textContent = '1';
+	gameOverOverlay.classList.add('hidden');
+
+	gameScreen.classList.add('hidden');
+	startScreen.classList.remove('hidden');
+});
 
 /* ----------------------------------- */
 /* スワイプ操作(盤面へのタッチ)
@@ -920,6 +962,7 @@ async function renderGlobalHighScores() {
 /* ------------------------------------ */
 // ゲームを開始する共通処理
 function startGameScreen() {
+	isGameOver = false;
 	startScreen.classList.add('hidden');   // スタート画面を隠す
 	gameScreen.classList.remove('hidden'); // ゲーム画面を表示
 
