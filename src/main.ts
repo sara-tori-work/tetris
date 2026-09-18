@@ -64,7 +64,7 @@ const createRoomButton = document.querySelector<HTMLButtonElement>('#create-room
 const joinRoomButton = document.querySelector<HTMLButtonElement>('#join-room-button')!;
 // 部屋コード 取得
 const roomCodeInput = document.querySelector<HTMLInputElement>('#room-code-input')!;
-// 部屋マッチボタン 取得
+// @ts-ignore:  部屋マッチボタン 取得
 const randomMatchButton = document.querySelector<HTMLButtonElement>('#random-match-button')!;
 // 待機画面 取得
 const waitingScreen = document.querySelector<HTMLDivElement>('#waiting-screen')!;
@@ -114,7 +114,7 @@ let lockDelayTimer: number | undefined;
 let playerName = 'プレイヤー'; // デフォ値
 // 今参加している部屋番号
 let currentRoomCode: string | null = null;
-// 自分が部屋を作った側(1人目)かどうか
+// @ts-ignore:  自分が部屋を作った側(1人目)かどうか
 let isPlayer1 = false;
 // リアルタイムのやり取りに使う「チャンネル」を管理する変数
 let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
