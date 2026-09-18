@@ -286,8 +286,8 @@ p {
 }
 
 .game-over-button:hover .button-image {
-	transform: scale(1.05);
-	transition: transform 0.15s;
+	opacity: .8;
+	transition: opacity 0.15s;
 }
 
 /* --- ハイスコア表示 --- */
