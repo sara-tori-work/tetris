@@ -48,6 +48,8 @@ const btnRotate = document.querySelector<HTMLButtonElement>('#btn-rotate')!;
 const btnRotateCcw = document.querySelector<HTMLButtonElement>('#btn-rotate-ccw')!;
 // スマホ操作 ソフトドロップボタン取得
 const btnDown = document.querySelector<HTMLButtonElement>('#btn-down')!;
+// スマホ操作 ホールドボタン取得
+const btnHold = document.querySelector<HTMLButtonElement>('#btn-hold')!;
 // ホールド機能取得
 const holdCanvas = document.querySelector<HTMLCanvasElement>('#hold-canvas')!;
 // 自己スコアリスト 取得
@@ -706,6 +708,7 @@ document.addEventListener('keydown', (event) => {
 		btnDrop.classList.add('pressed');
 	} else if (event.key === 'c' || event.key === 'C') {
 		holdCurrentTetromino();
+		btnHold.classList.add('pressed');
 	}
 });
 
@@ -722,6 +725,7 @@ document.addEventListener('keyup', (event) => {
 	if (event.key === 'ArrowDown') btnDown.classList.remove('pressed');
 	if (event.key === 'ArrowUp') btnRotate.classList.remove('pressed');
 	if (event.key === 'z' || event.key === 'Z') btnRotateCcw.classList.remove('pressed');
+	if (event.key === 'c' || event.key === 'C') btnHold.classList.remove('pressed');
 });
 
 
@@ -918,6 +922,11 @@ btnDown.addEventListener('mousedown', () => {
 });
 btnDown.addEventListener('mouseup', () => {
 	isSoftDropping = false; // 離したらソフトドロップをやめる
+});
+// ホールドボタン
+btnHold.addEventListener('click', () => {
+	if (isGameOver) return;
+	holdCurrentTetromino();
 });
 
 
