@@ -87,6 +87,7 @@ p {
 	border: none;
 	background: none;
 	cursor: pointer;
+	transition: transform 0.15s;
 }
 
 #start-button:hover .button-image {
@@ -111,7 +112,7 @@ p {
 }
 
 #room-code-input {
-	width: 100px;
+	width: 110px;
 	padding: 8px 10px;
 	border-radius: 6px;
 	border: 1px solid var(--color-dark-gray-blue);
@@ -214,9 +215,9 @@ p {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: 8px;
+	gap: 5px;
 	height: fit-content;
-	padding: 12px;
+	padding: 5px;
 	border: 1px solid rgba(90, 90, 255, 0.3);
 	border-radius: 8px;
 	background: var(--color-dark-navy);
@@ -224,7 +225,7 @@ p {
 }
 
 .next-box p {
-	margin: 0 0 8px;
+	margin: 0;
 	color: #aaaaaa;
 	font-size: 13px;
 }
@@ -339,6 +340,12 @@ p.high-scores-title {
 	border-radius: 8px;
 }
 
+.touch-row {
+	display: flex;
+	justify-content: center;
+	gap: 8px;
+}
+
 .touch-controls button {
 	width: 48px;
 	height: 48px;
@@ -378,12 +385,16 @@ p.high-scores-title {
 	flex-direction: column;
 	align-items: center;
 	gap: 8px;
-	padding: 12px;
+	padding: 10px;
 	margin-bottom: 10px;
 	border: 1px solid rgba(90, 90, 255, 0.3);
 	border-radius: 8px;
 	background-color: var(--color-dark-navy);
 	text-align: center;
+}
+
+.hold-box p {
+	margin: 0;
 }
 
 .hold-box canvas {
@@ -428,6 +439,48 @@ p.high-scores-title {
 	width: 48px;
 	height: auto;
 	max-width: 100%;
+}
+
+/* ----------------------------------------- */
+/* キー操作説明
+/* ----------------------------------------- */
+.key-guide {
+	align-self: flex-start;
+	padding: 10px;
+	background: var(--color-dark-navy);
+	border: 1px solid rgba(90, 90, 255, 0.3);
+	border-radius: 8px;
+	text-align: left;
+}
+
+.key-guide-title {
+	margin: 0 0 6px;
+	font-size: 12px;
+	color: #aaaaaa;
+	text-align: center;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+.key-guide-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
+	color: var(--color-white);
+	margin-bottom: 4px;
+}
+
+.key-badge {
+	display: inline-block;
+	min-width: 44px;
+	padding: 2px 8px;
+	background: var(--color-touch-btn-main);
+	border-radius: 4px;
+	font-size: 12px;
+	text-align: center;
+	color: var(--color-accent-blue);
+	font-weight: bold;
 }
 
 
@@ -574,4 +627,10 @@ p.high-scores-title {
 	.play-score p {
 		font-size: 12px;
 	}
+
+	/* キー操作説明 */
+	.key-guide {
+		display: none;
+	}
+
 }

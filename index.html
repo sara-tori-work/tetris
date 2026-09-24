@@ -46,6 +46,16 @@
 			</div>
 
 			<div class="game-area">
+				<!-- PC用: キー操作の説明 -->
+				<div class="key-guide">
+					<p class="key-guide-title">操作方法</p>
+					<div class="key-guide-row"><span class="key-badge">← →</span> 移動</div>
+					<div class="key-guide-row"><span class="key-badge">↑ / X</span> 右回転</div>
+					<div class="key-guide-row"><span class="key-badge">Z</span> 左回転</div>
+					<div class="key-guide-row"><span class="key-badge">↓</span> ソフトドロップ</div>
+					<div class="key-guide-row"><span class="key-badge">Space</span> ハードドロップ</div>
+					<div class="key-guide-row"><span class="key-badge">C</span> ホールド</div>
+				</div>
 				<div class="canvas-wrapper">
 					<canvas id="game-canvas" width="300" height="600"></canvas>
 					<div id="game-over-overlay" class="hidden">
@@ -94,9 +104,18 @@
 					</div>
 					<!-- スマホ用操作ボタン -->
 					<div class="touch-controls">
-						<button id="btn-rotate-ccw"><img src="./src/assets/rotate.png" alt="右回り" class="button-image" /></button>
-						<button id="btn-rotate"><img src="./src/assets/rotate-reverse.png" alt="左回り" class="button-image" /></button>
-						<button id="btn-down"><img src="./src/assets/soft-down.png" alt="ソフトドロップ" class="button-image" /></button>
+						<div class="touch-row">
+							<button id="btn-rotate-ccw"><img src="./src/assets/rotate.png" alt="右回り" class="button-image" /></button>
+							<button id="btn-rotate"><img src="./src/assets/rotate-reverse.png" alt="左回り" class="button-image" /></button>
+						</div>
+						<div class="touch-row">
+							<button id="btn-left">←</button>
+							<button id="btn-right">→</button>
+						</div>
+						<div class="touch-row">
+							<button id="btn-down"><img src="./src/assets/soft-down.png" alt="ソフトドロップ" class="button-image" /></button>
+							<button id="btn-drop">⏬</button>
+						</div>
 					</div>
 				</div>
 			</div>

@@ -36,6 +36,12 @@ const nextCanvases = [
 	document.querySelector<HTMLCanvasElement>('#next-canvas-1')!,
 	document.querySelector<HTMLCanvasElement>('#next-canvas-2')!,
 ];
+// スマホ操作 左移動ボタン取得
+const btnLeft = document.querySelector<HTMLButtonElement>('#btn-left')!;
+// スマホ操作 右移動ボタン取得
+const btnRight = document.querySelector<HTMLButtonElement>('#btn-right')!;
+// スマホ操作 クイックドロップボタン取得
+const btnDrop = document.querySelector<HTMLButtonElement>('#btn-drop')!;
 // スマホ操作 回転ボタン取得
 const btnRotate = document.querySelector<HTMLButtonElement>('#btn-rotate')!;
 // スマホ操作 逆回転ボタン取得
@@ -666,6 +672,7 @@ document.addEventListener('keydown', (event) => {
 			resetLockDelayIfNeeded(); // 横移動等に成功したら固定タイマーをリセット
 			draw();
 		}
+		btnLeft.classList.add('pressed');
 	} else if (event.key === 'ArrowRight' || event.key == 'd' || event.key == 'D') {
 		if (canMove(currentTetromino, 1, 0)) {
 			// 右に行ったら+1する
@@ -673,6 +680,7 @@ document.addEventListener('keydown', (event) => {
 			resetLockDelayIfNeeded(); // 横移動等に成功したら固定タイマーをリセット
 			draw();
 		}
+		btnRight.classList.add('pressed');
 	} else if (event.key === 'ArrowDown' || event.key == 's' || event.key == 'S') {
 		isSoftDropping = true;
 		btnDown.classList.add('pressed');
@@ -695,6 +703,7 @@ document.addEventListener('keydown', (event) => {
 		}
 		fixTetromino();
 		draw();
+		btnDrop.classList.add('pressed');
 	} else if (event.key === 'c' || event.key === 'C') {
 		holdCurrentTetromino();
 	}
@@ -707,6 +716,9 @@ document.addEventListener('keyup', (event) => {
 	}
 
 	// どのキーが離されても 対応するボタンの見た目を元に戻す
+	if (event.key === 'ArrowLeft') btnLeft.classList.remove('pressed');
+	if (event.key === 'ArrowRight') btnRight.classList.remove('pressed');
+	if (event.key === ' ') btnDrop.classList.remove('pressed');
 	if (event.key === 'ArrowDown') btnDown.classList.remove('pressed');
 	if (event.key === 'ArrowUp') btnRotate.classList.remove('pressed');
 	if (event.key === 'z' || event.key === 'Z') btnRotateCcw.classList.remove('pressed');
@@ -851,6 +863,37 @@ canvas.addEventListener('touchend', (event) => {
 /* ----------------------------------- */
 /* スマホ操作ボタン処理
 /* ----------------------------------- */
+// 左ボタン
+btnLeft.addEventListener('click', () => {
+	if (isGameOver) return;
+	if (canMove(currentTetromino, -1, 0)) {
+		currentTetromino.x -= 1;
+		resetLockDelayIfNeeded();
+		draw();
+	}
+});
+// 右ボタン
+btnRight.addEventListener('click', () => {
+	if (isGameOver) return;
+	if (canMove(currentTetromino, 1, 0)) {
+		currentTetromino.x += 1;
+		resetLockDelayIfNeeded();
+		draw();
+	}
+});
+// ハードドロップボタン
+btnDrop.addEventListener('click', () => {
+	if (isGameOver) return;
+	while (canMove(currentTetromino, 0, 1)) {
+		currentTetromino.y += 1;
+	}
+	if (lockDelayTimer !== undefined) {
+		clearTimeout(lockDelayTimer);
+		lockDelayTimer = undefined;
+	}
+	fixTetromino();
+	draw();
+});
 // 回転ボタン
 btnRotate.addEventListener('click', () => {
 	if (isGameOver) return; // ゲームオーバーの場合は処理しない
