@@ -91,7 +91,7 @@ const opponentContext = opponentCanvas.getContext('2d')!;
 // 対戦中 相手スコア 取得
 const opponentScoreSpan = document.querySelector<HTMLSpanElement>('#opponent-score')!;
 // 勝敗表示 取得
-const versusResultText = document.querySelector<HTMLParagraphElement>('#versus-result')!;
+const versusResultImage = document.querySelector<HTMLImageElement>('#versus-result')!;
 // スタート画面へ戻るボタン 取得
 const returnStartButton = document.querySelector<HTMLButtonElement>('#return-start-button')!;
 
@@ -475,9 +475,9 @@ function fixTetromino() {
 
 		// 対戦中なら、自分の負けを表示し、相手に通知する
 		if (isVersusMode) {
-			versusResultText.textContent = '敗北...';
-			versusResultText.classList.remove('hidden', 'win');
-			versusResultText.classList.add('lose');
+			versusResultImage.src = '/src/assets/lose.png';
+			versusResultImage.alt = '敗北';
+			versusResultImage.classList.remove('hidden');
 			sendGameOver();
 		}
 
@@ -784,7 +784,7 @@ returnStartButton.addEventListener('click', () => {
 	isVersusMode = false;
 	currentRoomCode = null;
 	opponentWrapper.classList.add('hidden');
-	versusResultText.classList.add('hidden');
+	versusResultImage.classList.add('hidden');
 
 	// ゲームの状態を初期化する(リスタート処理と同じ内容)
 	board = Array.from({ length: BOARD_HEIGHT }, () => Array(BOARD_WIDTH).fill(0));
@@ -1188,9 +1188,9 @@ function connectToRoom(roomCode: string) {
 			submitScoreToServer(score);
 			renderGlobalHighScores();
 
-			versusResultText.textContent = '勝利！';
-			versusResultText.classList.remove('hidden', 'lose');
-			versusResultText.classList.add('win');
+			versusResultImage.src = '/src/assets/win.png';
+			versusResultImage.alt = '勝利';
+			versusResultImage.classList.remove('hidden', 'lose');
 
 			// 操作ボタンを隠す
 			touchControls.classList.add('hidden');

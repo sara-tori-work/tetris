@@ -256,6 +256,7 @@ p {
 	aspect-ratio: 300 / 600;
 	margin: auto;
 	background: rgba(0, 0, 0, 0.75);
+	border: 2px solid var(--color-dark-gray-blue);
 	border-radius: 4px;
 }
 
@@ -272,7 +273,7 @@ p {
 }
 
 .game-over-box h2 {
-	margin: 0 0 4px;
+	margin: 0 0 20px;
 	color: var(--color-accent-pink);
 	font-size: 24px;
 	text-shadow: 0 0 12px var(--color-accent-pink);
@@ -305,7 +306,7 @@ p {
 /* --- ハイスコア表示 --- */
 .high-scores {
 	padding: 6px 12px;
-	margin-bottom: 8px;
+	margin-bottom: 20px;
 	border-radius: 8px;
 	background: var(--color-dark-navy);
 	text-align: left;
@@ -527,6 +528,32 @@ p.high-scores-title {
 }
 
 /* ----------------------------------------- */
+/* 対戦時のレイアウト 相手の盤面表示
+/* ----------------------------------------- */
+#app.match-width .game-area {
+	align-items: flex-start;
+}
+
+#app.match-width .opponent-wrapper {
+	flex: 0 0 30%;
+	max-width: 160px;
+}
+
+#app.match-width .canvas-wrapper {
+	flex: 0 0 auto;
+}
+
+#app.match-width #opponent-canvas {
+	width: 100%;
+	height: auto;
+}
+
+#app.match-width #game-canvas {
+	width: 100%;
+	max-width: none;
+}
+
+/* ----------------------------------------- */
 /* 対戦中 相手の盤面表示
 /* ----------------------------------------- */
 .opponent-wrapper {
@@ -562,19 +589,11 @@ p.high-scores-title {
 /* 勝敗スタイル
 /* ----------------------------------------- */
 .versus-result {
-	font-size: 20px;
-	font-weight: bold;
-	margin: 8px 0 16px;
-}
-
-.versus-result.win {
-	color: var(--color-accent-blue);
-	text-shadow: 0 0 12px var(--color-accent-blue);
-}
-
-.versus-result.lose {
-	color: var(--color-accent-pink);
-	text-shadow: 0 0 12px var(--color-accent-pink);
+	display: block;
+	width: 160px;
+	max-width: 60%;
+	height: auto;
+	margin: 18px auto;
 }
 
 
@@ -707,7 +726,53 @@ p.high-scores-title {
 		max-width: 100%;
 	}
 
-	/* 対戦相手の盤面 */
+	/* ----------------------------------------- */
+	/* 対戦時レイアウト(スマホ)
+	/* 相手盤面と自分盤面を横並びにする
+	/* ----------------------------------------- */
+	#app.match-width .game-area {
+		display: grid;
+		grid-template-columns: 3fr 7fr;
+		grid-template-rows: auto 1fr;
+		grid-template-areas:
+			"panel panel"
+			"opponent board";
+		height: calc(100% - 24vh);
+		gap: 6px;
+	}
+
+	#app.match-width .side-panel {
+		grid-area: panel;
+	}
+
+	#app.match-width .opponent-wrapper {
+		grid-area: opponent;
+		height: auto;
+		flex-direction: column;
+		justify-content: flex-start;
+	}
+
+	#app.match-width .canvas-wrapper {
+		grid-area: board;
+		height: 100%;
+		width: 100%;
+	}
+
+	#app.match-width #opponent-canvas {
+		width: 100%;
+		height: auto;
+		max-height: 100%;
+	}
+
+	#app.match-width #game-canvas {
+		height: 100%;
+		width: auto;
+		max-width: 100%;
+	}
+
+	/* ----------------------------------------- */
+	/* 対戦相手の盤面
+	/* ----------------------------------------- */
 	.opponent-wrapper {
 		order: 3;
 		height: 8vh;
@@ -738,7 +803,9 @@ p.high-scores-title {
 		border-radius: 4px;
 	}
 
-	/* 操作ボタン: 2行×4列のグリッド、画面下部に固定 */
+	/* ----------------------------------------- */
+	/* 操作ボタン: 2行×4列のグリッド、画面下部に固定
+	/* ----------------------------------------- */
 	.touch-controls {
 		display: grid;
 		grid-template-columns: repeat(4, 46px);
@@ -771,7 +838,9 @@ p.high-scores-title {
 		object-fit: contain;
 	}
 
-	/* ゲームオーバー画面 */
+	/* ----------------------------------------- */
+	/* ゲームオーバー画面
+	/* ----------------------------------------- */
 	#game-over-overlay {
 		height: 100%;
 	}
