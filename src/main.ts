@@ -5,6 +5,8 @@ import { supabase } from './supabaseClient.ts'
 /* ----------------------------------- */
 /* 定数設定 後ろに！をつけないと？が出てくる
 /* ----------------------------------- */
+// #app 取得
+const app = document.querySelector<HTMLDivElement>('#app')!;
 // カンバス取得
 const canvas = document.querySelector<HTMLCanvasElement>('#game-canvas')!;
 // カンバスに絵を描くための筆を取得
@@ -36,6 +38,8 @@ const nextCanvases = [
 	document.querySelector<HTMLCanvasElement>('#next-canvas-1')!,
 	document.querySelector<HTMLCanvasElement>('#next-canvas-2')!,
 ];
+// スマホ操作 コントロール取得
+const touchControls = document.querySelector<HTMLDivElement>('.touch-controls')!;
 // スマホ操作 左移動ボタン取得
 const btnLeft = document.querySelector<HTMLButtonElement>('#btn-left')!;
 // スマホ操作 右移動ボタン取得
@@ -477,6 +481,9 @@ function fixTetromino() {
 			sendGameOver();
 		}
 
+		// 操作ボタンを隠す
+		touchControls.classList.add('hidden');
+
 		// overlayを表示
 		gameOverOverlay.classList.remove('hidden');
 		return; // ここで処理終了→currentTetrominoを更新しない
@@ -756,6 +763,8 @@ restartButton.addEventListener('click', () => {
 
 	scoreSpan.textContent = '0';
 	levelSpan.textContent = '1';
+	// 操作ボタンを隠す
+	touchControls.classList.add('hidden');
 	gameOverOverlay.classList.add('hidden');
 
 	draw();
@@ -799,10 +808,14 @@ returnStartButton.addEventListener('click', () => {
 
 	scoreSpan.textContent = '0';
 	levelSpan.textContent = '1';
+	// 操作ボタンを隠す
+	touchControls.classList.add('hidden');
 	gameOverOverlay.classList.add('hidden');
 
 	gameScreen.classList.add('hidden');
 	startScreen.classList.remove('hidden');
+
+	app.classList.remove('match-width'); // 対戦用 maxwidth変更クラス消す
 });
 
 /* ----------------------------------- */
@@ -1134,6 +1147,7 @@ async function joinRoom() {
 	connectToRoom(roomCode);
 	playerNameSpan.textContent = playerName;
 	startGameScreen(); // ゲーム画面に切り替えて開始する
+	app.classList.add('match-width'); // 対戦用 maxwidth変更クラス
 }
 // 入室ボタンのクリック処理
 joinRoomButton.addEventListener('click', () => {
@@ -1178,6 +1192,8 @@ function connectToRoom(roomCode: string) {
 			versusResultText.classList.remove('hidden', 'lose');
 			versusResultText.classList.add('win');
 
+			// 操作ボタンを隠す
+			touchControls.classList.add('hidden');
 			gameOverOverlay.classList.remove('hidden');
 		}
 	});
@@ -1266,6 +1282,7 @@ function waitForOpponent(roomCode: string) {
 					waitingScreen.classList.add('hidden');
 					connectToRoom(roomCode);
 					startGameScreen();
+					app.classList.add('match-width'); // 対戦用 maxwidth変更クラス
 					supabase.removeChannel(watchChannel); // 監視をもう不要なので終了する
 				}
 			}
