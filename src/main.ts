@@ -68,6 +68,10 @@ const startScreen = document.querySelector<HTMLDivElement>('#start-screen')!;
 const gameScreen = document.querySelector<HTMLDivElement>('#game-screen')!;
 // スタートボタン 取得
 const startButton = document.querySelector<HTMLButtonElement>('#start-button')!;
+// 対戦ボタン洗濯 取得
+const roomModeButton = document.querySelector<HTMLButtonElement>('#room-mode-button')!;
+// 部屋入室選択 取得
+const roomControls = document.querySelector<HTMLDivElement>('#room-controls')!;
 // プレイヤー名入力欄 取得
 const playerNameInput = document.querySelector<HTMLInputElement>('#player-name-input')!;
 // プレイヤー名入力欄 取得
@@ -1051,6 +1055,11 @@ startButton.addEventListener('click', () => {
 	startGameScreen();
 });
 
+
+// 「対戦」ボタンを押したら、部屋作成/入室のコントロールを表示する
+roomModeButton.addEventListener('click', () => {
+	roomControls.classList.remove('hidden');
+});
 
 /* ----------------------------------- */
 /* 対戦部屋(ルーム)の管理
