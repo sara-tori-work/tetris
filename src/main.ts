@@ -475,7 +475,7 @@ function fixTetromino() {
 
 		// 対戦中なら、自分の負けを表示し、相手に通知する
 		if (isVersusMode) {
-			versusResultImage.src = '/src/assets/lose.png';
+			versusResultImage.src = '/assets/lose.png';
 			versusResultImage.alt = '敗北';
 			versusResultImage.classList.remove('hidden');
 			sendGameOver();
