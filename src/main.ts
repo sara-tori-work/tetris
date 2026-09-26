@@ -78,12 +78,14 @@ const createRoomButton = document.querySelector<HTMLButtonElement>('#create-room
 const joinRoomButton = document.querySelector<HTMLButtonElement>('#join-room-button')!;
 // 部屋コード 取得
 const roomCodeInput = document.querySelector<HTMLInputElement>('#room-code-input')!;
-// @ts-ignore: 部屋マッチボタン 取得
+// 部屋マッチボタン 取得
 const randomMatchButton = document.querySelector<HTMLButtonElement>('#random-match-button')!;
 // 待機画面 取得
 const waitingScreen = document.querySelector<HTMLDivElement>('#waiting-screen')!;
-// 待機画面 入室コード 取得
-const waitingRoomCodeSpan = document.querySelector<HTMLSpanElement>('#waiting-room-code')!;
+// 待機画面 部屋番号:入室コード 取得
+const waitingRoomInfo = document.querySelector<HTMLSpanElement>('#waiting-room-info')!;
+// 待機画面 メッセージ 取得
+const waitingMessage = document.querySelector<HTMLParagraphElement>('#waiting-message')!;
 // 対戦中 盤面全体 取得
 const opponentWrapper = document.querySelector<HTMLDivElement>('#opponent-wrapper')!;
 // 対戦中 盤面 取得
@@ -130,7 +132,7 @@ let lockDelayTimer: number | undefined;
 let playerName = 'プレイヤー'; // デフォ値
 // 今参加している部屋番号
 let currentRoomCode: string | null = null;
-// @ts-ignore: 自分が部屋を作った側(1人目)かどうか
+// @ts-ignore:  自分が部屋を作った側(1人目)かどうか
 let isPlayer1 = false;
 // リアルタイムのやり取りに使う「チャンネル」を管理する変数
 let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
@@ -1156,6 +1158,78 @@ joinRoomButton.addEventListener('click', () => {
 	joinRoom();
 });
 
+/* ------------------------------------------------ */
+/* ランダム対戦ボタンの処理
+/* ------------------------------------------------ */
+async function startRandomMatch() {
+	const inputValue = playerNameInput.value.trim();
+	playerName = inputValue === '' ? 'プレイヤー' : inputValue;
+
+	// まず、すでに誰かが待機している部屋がないか探す
+	const { data, error } = await supabase
+		.from('rooms')
+		.select('*')
+		.eq('status', 'waiting') // ステータスがwaitingの行だけに絞る
+		.limit(1) // 該当する部屋が複数あっても最初の1行だけ
+		.maybeSingle(); // 結果が0件でもエラーせずにnullを返す
+
+	if (error) {
+		console.error('マッチング中にエラーが発生しました:', error);
+		alert('マッチングに失敗しました。もう一度お試しください。');
+		return;
+	}
+
+	if (data !== null) {
+		// 待機中の部屋が見つかった場合: そこに入室する
+		const roomCode = data.room_code;
+
+		const { error: updateError } = await supabase
+			.from('rooms')
+			.update({ player2_name: playerName, status: 'playing' })
+			.eq('room_code', roomCode);
+
+		if (updateError) {
+			console.error('入室に失敗しました:', updateError);
+			alert('マッチングに失敗しました。もう一度お試しください。');
+			return;
+		}
+
+		currentRoomCode = roomCode;
+		isPlayer1 = false;
+
+		connectToRoom(roomCode);
+		playerNameSpan.textContent = playerName;
+		startGameScreen();
+		app.classList.add('match-width');
+	} else {
+		// 待機中の部屋が見つからなかった場合: 自分で新しく部屋を作って待つ
+		const roomCode = generateRoomCode();
+
+		const { error: insertError } = await supabase
+			.from('rooms')
+			.insert({
+				room_code: roomCode,
+				player1_name: playerName,
+				status: 'waiting',
+			});
+
+		if (insertError) {
+			console.error('部屋の作成に失敗しました:', insertError);
+			alert('マッチングに失敗しました。もう一度お試しください。');
+			return;
+		}
+
+		currentRoomCode = roomCode;
+		isPlayer1 = true;
+
+		showWaitingScreen(null);
+		waitForOpponent(roomCode);
+	}
+}
+
+randomMatchButton.addEventListener('click', () => {
+	startRandomMatch();
+});
 
 /* ------------------------------------------------ */
 /* 対戦部屋に接続してリアルタイムやり取りを開始する関数
@@ -1258,10 +1332,19 @@ function sendGameOver() {
 /* 待機画面に関する関数
 /* ------------------------------------------------ */
 // 待機画面を表示する関数
-function showWaitingScreen(roomCode: string) {
+function showWaitingScreen(roomCode: string | null) {
 	startScreen.classList.add('hidden');
 	waitingScreen.classList.remove('hidden');
-	waitingRoomCodeSpan.textContent = roomCode;
+
+	if (roomCode !== null) {
+		// 部屋番号を表示したい場合
+		waitingRoomInfo.textContent = `部屋番号: ${roomCode}`;
+		waitingMessage.textContent = '対戦相手を待っています...';
+	} else {
+		// 部屋番号を表示したくない場合(ランダムマッチング時)
+		waitingRoomInfo.textContent = '';
+		waitingMessage.textContent = '対戦相手を探しています...';
+	}
 }
 
 // 相手の入室(rooms テーブルの status 変化)を監視する関数
