@@ -1188,7 +1188,7 @@ function connectToRoom(roomCode: string) {
 			submitScoreToServer(score);
 			renderGlobalHighScores();
 
-			versusResultImage.src = '/src/assets/win.png';
+			versusResultImage.src = '/assets/win.png';
 			versusResultImage.alt = '勝利';
 			versusResultImage.classList.remove('hidden', 'lose');
 
