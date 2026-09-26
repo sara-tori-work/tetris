@@ -1,6 +1,8 @@
 import './style.css'
 import { BOARD_WIDTH, BOARD_HEIGHT, createRandomTetromino, type Tetromino, rotateShape, rotateShapeCounterClockwise, createTetrominoByType } from './tetromino.ts'
 import { supabase } from './supabaseClient.ts'
+import winImg from './assets/win.png';
+import loseImg from './assets/lose.png';
 
 /* ----------------------------------- */
 /* 定数設定 後ろに！をつけないと？が出てくる
@@ -475,7 +477,7 @@ function fixTetromino() {
 
 		// 対戦中なら、自分の負けを表示し、相手に通知する
 		if (isVersusMode) {
-			versusResultImage.src = '/assets/lose.png';
+			versusResultImage.src = loseImg;
 			versusResultImage.alt = '敗北';
 			versusResultImage.classList.remove('hidden');
 			sendGameOver();
@@ -1188,7 +1190,7 @@ function connectToRoom(roomCode: string) {
 			submitScoreToServer(score);
 			renderGlobalHighScores();
 
-			versusResultImage.src = '/assets/win.png';
+			versusResultImage.src = winImg;
 			versusResultImage.alt = '勝利';
 			versusResultImage.classList.remove('hidden', 'lose');
 
