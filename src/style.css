@@ -829,8 +829,8 @@ p.high-scores-title {
 		justify-content: space-between;
 		gap: 6px;
 		order: 4;
-		/*inset: 0 0 0 -50px;
-		width: calc(100% + 100px);*/
+		inset: 0 0 0 -50px;
+		width: calc(100% + 100px);
 		inset: 0;
 		width: auto;
 		height: auto;
