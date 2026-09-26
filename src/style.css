@@ -358,12 +358,14 @@ p.high-scores-title {
 /* タッチ操作
 /* ----------------------------------------- */
 .touch-controls {
-	display: flex;
-	flex-direction: row;
+	display: grid;
+	grid-template-columns: repeat(2, 46px);
 	justify-content: center;
-	flex-wrap: wrap;
 	gap: 8px;
-	padding: 12px 0;
+	position: absolute;
+	bottom: 0;
+	right: -110px;
+	padding: 12px 0 0;
 	border-radius: 8px;
 }
 
@@ -821,16 +823,14 @@ p.high-scores-title {
 	/* 操作ボタン: 2行×4列のグリッド、画面下部に固定
 	/* ----------------------------------------- */
 	.touch-controls {
-		display: grid;
 		grid-template-columns: 46px;
 		grid-template-rows: repeat(4, 46px);
-		align-content: center;
+		align-content: end;
 		justify-content: space-between;
 		gap: 6px;
 		order: 4;
-		position: absolute;
-		inset: 0;
-		width: 100%;
+		inset: 0 0 0 -50px;
+		width: calc(100% + 100px);
 		height: auto;
 		padding: 0;
 		box-sizing: border-box;
