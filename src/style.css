@@ -823,14 +823,16 @@ p.high-scores-title {
 	/* 操作ボタン: 2行×4列のグリッド、画面下部に固定
 	/* ----------------------------------------- */
 	.touch-controls {
-		grid-template-columns: 46px;
+		grid-template-columns: 46px 46px;
 		grid-template-rows: repeat(4, 46px);
 		align-content: end;
 		justify-content: space-between;
 		gap: 6px;
 		order: 4;
-		inset: 0 0 0 -50px;
-		width: calc(100% + 100px);
+		/*inset: 0 0 0 -50px;
+		width: calc(100% + 100px);*/
+		inset: 0;
+		width: auto;
 		height: auto;
 		padding: 0;
 		box-sizing: border-box;
