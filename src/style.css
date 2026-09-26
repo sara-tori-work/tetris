@@ -713,7 +713,7 @@ p.high-scores-title {
 	/* メイン盤面 */
 	.canvas-wrapper {
 		order: 2;
-		width: 100%;
+		width: auto;
 		height: calc(100vh - 4vh - 48px - 24vh);
 		display: flex;
 		justify-content: center;
@@ -808,17 +808,17 @@ p.high-scores-title {
 	/* ----------------------------------------- */
 	.touch-controls {
 		display: grid;
-		grid-template-columns: repeat(4, 46px);
-		grid-auto-rows: 46px;
-		align-content: end;
+		grid-template-columns: 46px;
+		grid-template-rows: repeat(4, 46px);
+		align-content: center;
+		justify-content: space-between;
 		gap: 6px;
 		order: 4;
-		position: fixed;
-		bottom: 0;
-		left: 0;
+		position: absolute;
+		inset: 0;
 		width: 100%;
 		height: auto;
-		padding: 8px 0 calc(env(safe-area-inset-bottom) + 4px);
+		padding: 0;
 		box-sizing: border-box;
 	}
 
@@ -836,6 +836,43 @@ p.high-scores-title {
 		width: 28px;
 		height: 28px;
 		object-fit: contain;
+	}
+
+	/* 左側 */
+	#btn-rotate-ccw {
+		grid-column: 1;
+		grid-row: 1;
+	}
+
+	#btn-left {
+		grid-column: 1;
+		grid-row: 2;
+	}
+
+	#btn-down {
+		grid-column: 1;
+		grid-row: 3;
+	}
+
+	#btn-hold {
+		grid-column: 1;
+		grid-row: 4;
+	}
+
+	/* 右側 */
+	#btn-rotate {
+		grid-column: 2;
+		grid-row: 1;
+	}
+
+	#btn-right {
+		grid-column: 2;
+		grid-row: 2;
+	}
+
+	#btn-drop {
+		grid-column: 2;
+		grid-row: 3;
 	}
 
 	/* ----------------------------------------- */

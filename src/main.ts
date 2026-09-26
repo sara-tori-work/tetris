@@ -764,7 +764,7 @@ restartButton.addEventListener('click', () => {
 	scoreSpan.textContent = '0';
 	levelSpan.textContent = '1';
 	// 操作ボタンを隠す
-	touchControls.classList.add('hidden');
+	touchControls.classList.remove('hidden');
 	gameOverOverlay.classList.add('hidden');
 
 	draw();
