@@ -344,15 +344,28 @@ p.high-scores-title {
 }
 
 .high-scores ol {
-	padding-left: 20px;
+	padding-left: 0;
 	margin: 0;
 	color: var(--color-white);
 	font-size: 14px;
+	list-style: none;
+	counter-reset: rank;
 }
 
 .high-scores li {
 	margin-bottom: 2px;
+	counter-increment: rank;
 }
+
+.high-scores li::before {
+	margin-right: 10px;
+	content: counter(rank) "位";
+}
+
+.high-scores :nth-child(n+4)::before {
+	display: none;
+}
+
 
 /* ----------------------------------------- */
 /* タッチ操作
@@ -610,6 +623,22 @@ p.high-scores-title {
 	max-width: 60%;
 	height: auto;
 	margin: 18px auto;
+}
+
+/* ----------------------------------------- */
+/* 結果：区切り線と自分の順位
+/* ----------------------------------------- */
+.rank-divider {
+	list-style: none;
+	margin: 4px 0;
+	border-bottom: 1px solid #ddd;
+}
+
+.my-rank {
+	list-style: none;
+	color: var(--color-accent-blue);
+	font-weight: bold;
+	margin-top: 4px;
 }
 
 

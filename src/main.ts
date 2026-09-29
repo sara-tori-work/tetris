@@ -479,7 +479,7 @@ function fixTetromino() {
 		// サーバーにも送信する
 		submitScoreToServer(score);
 		// みんなのハイスコアを表示する
-		renderGlobalHighScores();
+		renderGlobalHighScores(score);
 
 		// 対戦中なら、自分の負けを表示し、相手に通知する
 		if (isVersusMode) {
@@ -1017,15 +1017,49 @@ async function fetchGlobalHighScores(): Promise<{ score: number; player_name: st
 	return data;
 }
 
-// サーバーから取得したハイスコアを画面に表示する関数
-async function renderGlobalHighScores() {
+// 自分のスコアが、全体で何位かを計算する関数
+async function fetchMyRank(myScore: number): Promise<number> {
+	const { count, error } = await supabase
+		.from('scores')
+		.select('*', { count: 'exact', head: true }) // 実際のデータの中身は返さず、該当する行が何件あるか正確な件数 取得
+		.gt('score', myScore); // score列が自分のスコアより大きい行に絞る
+
+	if (error) {
+		console.error('順位の取得に失敗しました:', error);
+		return 0;
+	}
+
+	return (count ?? 0) + 1; // countがnullだったら0とする。自分より上の人数+1で自分の順位を求める
+}
+
+// サーバーから取得したハイスコアを画面に表示する関数(自分の順位も考慮する)
+async function renderGlobalHighScores(myScore?: number) {
 	const scores = await fetchGlobalHighScores();
 	globalHighScoreList.innerHTML = '';
 
-	for (const entry of scores) {
+	scores.forEach((entry, index) => {
 		const item = document.createElement('li');
-		item.textContent = `${entry.player_name}: ${entry.score}`; // fetchGlobalHighScoresが返してくれる1件ずつのデータから名前とスコアを取り出す
+		// fetchGlobalHighScoresが返してくれる1件ずつのデータから名前とスコアを取り出す
+		item.textContent = `${entry.player_name}: ${entry.score}`;
 		globalHighScoreList.appendChild(item);
+	});
+
+	// 引数として自分のスコアが渡された場合（ゲームオーバー時）：順位を計算して表示
+	if (myScore !== undefined) {
+		const myRank = await fetchMyRank(myScore);
+
+		if (myRank > 3) {
+			// 3位より下（ランク外）の場合：区切り線と自分の順位を追加表示する
+			const divider = document.createElement('li');
+			divider.classList.add('rank-divider');
+			divider.textContent = '';
+			globalHighScoreList.appendChild(divider);
+
+			const myRankItem = document.createElement('li');
+			myRankItem.classList.add('my-rank');
+			myRankItem.textContent = `${myRank}位: ${playerName}: ${myScore}`;
+			globalHighScoreList.appendChild(myRankItem);
+		}
 	}
 }
 
@@ -1271,7 +1305,7 @@ function connectToRoom(roomCode: string) {
 			saveHighScore(score);
 			renderHighScores();
 			submitScoreToServer(score);
-			renderGlobalHighScores();
+			renderGlobalHighScores(score);
 
 			versusResultImage.src = winImg;
 			versusResultImage.alt = '勝利';
