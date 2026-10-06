@@ -24,6 +24,7 @@ const COLORS: Record<string, string> = {
 	Z: '#ff0000',
 	J: '#0000ff',
 	L: '#ff8800',
+	G: '#666666', // おじゃまブロック
 };
 // スコア表示取得
 const scoreSpan = document.querySelector<HTMLSpanElement>('#score')!;
@@ -72,6 +73,8 @@ const startButton = document.querySelector<HTMLButtonElement>('#start-button')!;
 const roomModeButton = document.querySelector<HTMLButtonElement>('#room-mode-button')!;
 // 部屋入室選択 取得
 const roomControls = document.querySelector<HTMLDivElement>('#room-controls')!;
+// 待機画面 キャンセルボタン 取得
+const cancelWaitButton = document.querySelector<HTMLButtonElement>('#cancel-wait-button')!;
 // プレイヤー名入力欄 取得
 const playerNameInput = document.querySelector<HTMLInputElement>('#player-name-input')!;
 // プレイヤー名入力欄 取得
@@ -107,8 +110,10 @@ const returnStartButton = document.querySelector<HTMLButtonElement>('#return-sta
 /* ----------------------------------- */
 /* 変数
 /* ----------------------------------- */
+// 盤面1マスの中身：0=空、文字=ブロックの種類、'G'=おじゃまブロック
+type Cell = 0 | string;
 // 盤面データ：20行×10列、最初は全部0＝空 行ごとに独立した新しい配列を作る
-let board: number[][] = Array.from({ length: BOARD_HEIGHT }, () =>
+let board: Cell[][] = Array.from({ length: BOARD_HEIGHT }, () =>
 	Array(BOARD_WIDTH).fill(0)
 );
 // 今落ちているテトロミノ
@@ -126,22 +131,30 @@ let level = 1;
 let totalLinesCleared = 0;
 // ゲーム終了を管理変数
 let isGameOver = false;
+// ライン消去の点滅中かどうか（この間は操作と自動落下を止める）
+let isClearing = false;
 // 何もホールドしていない状態＝null
 let holdTetromino: Tetromino | null = null;
 // 今のブロックでホールドを使っていないかどうか
 let canHold = true;
 // 固定を遅らせるためのタイマーID
 let lockDelayTimer: number | undefined;
+// 自動落下ループのタイマーID
+let dropTimer: number | undefined;
 // プレイヤー名を管理する変数
 let playerName = 'プレイヤー'; // デフォ値
 // 今参加している部屋番号
 let currentRoomCode: string | null = null;
-// @ts-ignore:  自分が部屋を作った側(1人目)かどうか
+// 自分が部屋を作った側(1人目)かどうか
 let isPlayer1 = false;
 // リアルタイムのやり取りに使う「チャンネル」を管理する変数
 let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
 // 対戦モードかどうか
 let isVersusMode = false;
+// 盤面送信ループのタイマーID
+let broadcastTimer: number | undefined;
+// 待機中に相手の入室を監視するチャンネル
+let watchChannel: ReturnType<typeof supabase.channel> | null = null;
 
 
 /* ----------------------------------- */
@@ -180,9 +193,7 @@ function draw() {
 	for (let row = 0; row < BOARD_HEIGHT; row++) {
 		for (let col = 0; col < BOARD_WIDTH; col++) {
 			if (board[row][col] !== 0) {
-				drawCell(col, row, '#888888');
-			} else if (board[row][col] === 2) {
-				drawCell(col, row, '#555555'); // おじゃまブロックは、少し暗い色にする
+				drawCell(col, row, COLORS[board[row][col]]);
 			}
 		}
 	}
@@ -208,7 +219,7 @@ function draw() {
 /* ----------------------------------- */
 /* 対戦相手の盤面を描画する関数
 /* ----------------------------------- */
-function drawOpponentBoard(opponentBoard: number[][], opponentTetromino: Tetromino) {
+function drawOpponentBoard(opponentBoard: Cell[][], opponentTetromino: Tetromino) {
 	const opponentCellSize = 15; // 自分の盤面(30px)の半分のサイズ
 
 	opponentContext.fillStyle = '#000000';
@@ -218,7 +229,7 @@ function drawOpponentBoard(opponentBoard: number[][], opponentTetromino: Tetromi
 	for (let row = 0; row < BOARD_HEIGHT; row++) {
 		for (let col = 0; col < BOARD_WIDTH; col++) {
 			if (opponentBoard[row][col] !== 0) {
-				opponentContext.fillStyle = '#888888';
+				opponentContext.fillStyle = COLORS[opponentBoard[row][col]];
 				opponentContext.fillRect(
 					col * opponentCellSize,
 					row * opponentCellSize,
@@ -364,6 +375,7 @@ function drawHold() {
 /* ----------------------------------- */
 // テトロミノを1マス下に落とす関数
 function dropTetromino() {
+	if (isClearing) return; // 点滅中は落とさない
 	if (canMove(currentTetromino, 0, 1)) {
 		// 下に1マス動かせるか確認し、動けるならyを増やす
 		currentTetromino.y += 1;
@@ -400,14 +412,27 @@ let isSoftDropping = false; // 下キーが押されている間かどうか
 const SOFT_DROP_SPEED = 50; // ソフトドロップ中の落下間隔（ミリ秒）
 
 
+// 自動落下ループを止める関数
+function stopDropLoop() {
+	if (dropTimer !== undefined) {
+		clearTimeout(dropTimer);
+		dropTimer = undefined;
+	}
+}
+
+
 // 次の自動落下を予約する関数
 function scheduleNextDrop() {
+	// 予約済みのタイマーが残っていたら止めてから予約する
+	stopDropLoop();
+
 	// ゲームオーバー：それ以上落下処理をしない
 	if (isGameOver) return;
 
 	const normalSpeed = Math.max(600 - (level - 1) * 50, 100); // レベルが上がると50msずつ早くなる　催促100ms
 	const speed = isSoftDropping ? SOFT_DROP_SPEED : normalSpeed; // ソフトドロップなら50ミリ秒、そうでないなら600ミリ秒
 	setTimeout(() => {
+		dropTimer = undefined; //実行中のタイマーIDを残さない
 		dropTetromino();
 		scheduleNextDrop(); // 実行後、また次の落下を自分自身で予約する
 	}, speed);
@@ -446,40 +471,62 @@ function canMove(tetromino: Tetromino, offsetX: number, offsetY: number): boolea
 
 // テトロミノを盤面に固定する関数 boardに書き込むよ
 function fixTetromino() {
-	if (isGameOver) return; // すでにゲームオーバーなら何もしない
+	// すでにゲームオーバーまたはライン消去中なら何もしない
+	if (isGameOver || isClearing) return;
 	const shape = currentTetromino.shape;
 
 	for (let row = 0; row < shape.length; row++) {
 		for (let col = 0; col < shape[row].length; col++) {
-			if (shape[row][col] !== 0) { // 実際にブロックがあるマスだけ書き込む
+			// 実際にブロックがあるマスだけ書き込む
+			if (shape[row][col] !== 0) {
 				const boardY = currentTetromino.y + row;
 				const boardX = currentTetromino.x + col;
 				if (boardY >= 0) {
-					board[boardY][boardX] = 1;
+					board[boardY][boardX] = currentTetromino.type;
 				}
 			}
 		}
 	}
 
-	// 固定した直後に、そろった行がないか確認する
-	clearLines();
+	// 揃った行を取得
+	const fullRowIndexes = findFullRows();
+	// 揃った行がなければ次のミノを出す
+	if (fullRowIndexes.length === 0) {
+		spawnNextTetromino();
+		return;
+	}
 
+	// 揃った行がある：点滅が終わってから消去、次のミノだす
+	isClearing = true;
+	flashRows(fullRowIndexes, () => {
+		isClearing = false;
+		// 点滅中に相手が負けて、自分の勝利が確定したら何もしない
+		if (isGameOver) return;
+		applyLineClear();
+		spawnNextTetromino();
+		draw();
+	});
+}
+
+/* --------------------------------------------------- */
+/* 次のミノを出す関数（出せなければゲームオーバー）
+/* --------------------------------------------------- */
+function spawnNextTetromino() {
 	// 新しいテトロミノを出現される
 	const upcomingTetromino = nextQueue[0]; // キューの先頭を次に使うブロックにする
 
 	// 新しいテトロミノがその場に置けない場合：ゲームオーバーにする
 	if (!canMove(upcomingTetromino, 0, 0)) {
 		isGameOver = true;
+		stopDropLoop();
 		// 最終スコアを表示
 		finalScoreSpan.textContent = score.toString();
 		// 今回のスコアを保存する
 		saveHighScore(score);
 		// ハイスコア一覧を表示する
 		renderHighScores();
-		// サーバーにも送信する
-		submitScoreToServer(score);
-		// みんなのハイスコアを表示する
-		renderGlobalHighScores(score);
+		// ランキング表示
+		saveAndShowGlobalRanking(score);
 
 		// 対戦中なら、自分の負けを表示し、相手に通知する
 		if (isVersusMode) {
@@ -487,6 +534,9 @@ function fixTetromino() {
 			versusResultImage.alt = '敗北';
 			versusResultImage.classList.remove('hidden');
 			sendGameOver();
+			// 対戦送信のループを止める
+			stopBroadcast();
+			finishRoom(); // 終わった部屋のステータス変更
 		}
 
 		// 操作ボタンを隠す
@@ -540,8 +590,9 @@ function holdCurrentTetromino() {
 /* ----------------------------------- */
 /* 行を消す判定
 /* ----------------------------------- */
-// 揃った行を探して消す関数
-function clearLines() {
+
+// 揃っている行の番号を集める関数
+function findFullRows(): number[] {
 	// 消える予定の行番号を集める
 	const fullRowIndexes: number[] = [];
 	board.forEach((row, index) => {
@@ -549,63 +600,59 @@ function clearLines() {
 			fullRowIndexes.push(index);
 		}
 	});
-
-	// 消える業がなければ何もしない
-	if (fullRowIndexes.length === 0) return;
-
-	// 光らせるエフェクトを一瞬表示してから削除処理を行う
-	flashRows(fullRowIndexes, () => {
-		// 行が埋まっているかを基準にする。埋まってない業だけ残す　
-		// (row) => row～：配列中に条件に合う要素が1つでもあればtrueを返す
-		const remainingRows = board.filter((row) => row.some((cell) => cell === 0));
-		// 消えた行数
-		const clearedCount = BOARD_HEIGHT - remainingRows.length;
-
-		// 消えた行数分、盤面の一番上に新しい空の行を追加する
-		for (let i = 0; i < clearedCount; i++) {
-			// 消えた行数分、空の行を先頭に追加
-			remainingRows.unshift(Array(BOARD_WIDTH).fill(0));
-		}
-
-		board = remainingRows;
-
-		// 消した行数に応じてスコアを加算する
-		if (clearedCount > 0) {
-			const scoreTable: Record<number, number> = {
-				1: 100,
-				2: 300,
-				3: 500,
-				4: 800,
-			};
-			score += scoreTable[clearedCount] || 0; // clearedCountが0の時、5以上のような想定外の値だった場合に備えて、対応する点数が見つからなければ0点にする
-			scoreSpan.textContent = score.toString();
-
-			// 累計ライン数を更新し レベルアップを判定する
-			totalLinesCleared += clearedCount; // 今回消した行数を累計に足す
-			const newLevel = Math.floor(totalLinesCleared / 10) + 1; // 累計10行と都にレベルが1上がる（範囲：0～9行＝1レベル）
-
-			// レベルが変わったときだけ画面表示を更新
-			if (newLevel !== level) {
-				level = newLevel;
-				levelSpan.textContent = level.toString();
-			}
-
-			// 対戦中、2行以上消したらおじゃまブロックを送る
-			if (isVersusMode && clearedCount >= 2) {
-				// 何行分のお邪魔ブロックを送るか定義
-				const attackTable: Record<number, number> = {
-					2: 1,
-					3: 2,
-					4: 4,
-				};
-				const attackLines = attackTable[clearedCount] || 0;
-				sendAttack(attackLines);
-			}
-		}
-		draw();
-	});
+	return fullRowIndexes;
 }
 
+// 揃った行を消して、スコア・レベル加算と攻撃送信を行う
+function applyLineClear() {
+	// 行が埋まっているかを基準にする。埋まってない業だけ残す　
+	// (row) => row～：配列中に条件に合う要素が1つでもあればtrueを返す
+	const remainingRows = board.filter((row) => row.some((cell) => cell === 0));
+	// 消えた行数
+	const clearedCount = BOARD_HEIGHT - remainingRows.length;
+
+	// 消えた行数分、盤面の一番上に新しい空の行を追加する
+	for (let i = 0; i < clearedCount; i++) {
+		// 消えた行数分、空の行を先頭に追加
+		remainingRows.unshift(Array(BOARD_WIDTH).fill(0));
+	}
+
+	board = remainingRows;
+
+	// 消した行数に応じてスコアを加算する
+	if (clearedCount > 0) {
+		const scoreTable: Record<number, number> = {
+			1: 100,
+			2: 300,
+			3: 500,
+			4: 800,
+		};
+		score += scoreTable[clearedCount] || 0; // clearedCountが0の時、5以上のような想定外の値だった場合に備えて、対応する点数が見つからなければ0点にする
+		scoreSpan.textContent = score.toString();
+
+		// 累計ライン数を更新し レベルアップを判定する
+		totalLinesCleared += clearedCount; // 今回消した行数を累計に足す
+		const newLevel = Math.floor(totalLinesCleared / 10) + 1; // 累計10行と都にレベルが1上がる（範囲：0～9行＝1レベル）
+
+		// レベルが変わったときだけ画面表示を更新
+		if (newLevel !== level) {
+			level = newLevel;
+			levelSpan.textContent = level.toString();
+		}
+
+		// 対戦中、2行以上消したらおじゃまブロックを送る
+		if (isVersusMode && clearedCount >= 2) {
+			// 何行分のお邪魔ブロックを送るか定義
+			const attackTable: Record<number, number> = {
+				2: 1,
+				3: 2,
+				4: 4,
+			};
+			const attackLines = attackTable[clearedCount] || 0;
+			sendAttack(attackLines);
+		}
+	}
+}
 
 // おじゃまブロックを受け取り、盤面の一番下に追加する関数
 function receiveAttack(lines: number) {
@@ -613,7 +660,7 @@ function receiveAttack(lines: number) {
 		// 1箇所だけ穴が空いた、おじゃまブロックの行を作る
 		const holePosition = Math.floor(Math.random() * BOARD_WIDTH);
 		// 2 = おじゃまブロック専用の印
-		const garbageRow = Array(BOARD_WIDTH).fill(2);
+		const garbageRow = Array(BOARD_WIDTH).fill('G');
 		// その位置だけ穴を空ける
 		garbageRow[holePosition] = 0;
 
@@ -680,7 +727,7 @@ function tryRotate(direction: 'clockwise' | 'counterclockwise' = 'clockwise') {
 // キーボード操作
 document.addEventListener('keydown', (event) => {
 	// ゲームオーバー中は操作を受け付けない
-	if (isGameOver) return;
+	if (isGameOver || isClearing) return;
 
 	if (event.key == 'ArrowLeft' || event.key == 'a' || event.key == 'A') {
 		if (canMove(currentTetromino, -1, 0)) {
@@ -768,6 +815,7 @@ restartButton.addEventListener('click', () => {
 	level = 1;
 	totalLinesCleared = 0;
 	isGameOver = false;
+	isClearing = false;
 
 	scoreSpan.textContent = '0';
 	levelSpan.textContent = '1';
@@ -783,14 +831,18 @@ restartButton.addEventListener('click', () => {
 
 // スタート画面に戻るボタンの処理
 returnStartButton.addEventListener('click', () => {
+	// 対戦送信のループを止める
+	stopBroadcast();
+
 	// 対戦中なら、Realtimeの接続を切る
 	if (realtimeChannel !== null) {
-		supabase.removeChannel(realtimeChannel); // 対戦ちゅだったら通信チャンネルを明示的に切断
+		supabase.removeChannel(realtimeChannel); // 対戦中だったら通信チャンネルを明示的に切断
 		realtimeChannel = null;
 	}
 
 	isVersusMode = false;
 	currentRoomCode = null;
+	isPlayer1 = false;
 	opponentWrapper.classList.add('hidden');
 	versusResultImage.classList.add('hidden');
 
@@ -813,6 +865,8 @@ returnStartButton.addEventListener('click', () => {
 	level = 1;
 	totalLinesCleared = 0;
 	isGameOver = true; // 自動落下ループを止めるため、一旦trueにしておく
+	isClearing = false;
+	stopDropLoop();
 
 	scoreSpan.textContent = '0';
 	levelSpan.textContent = '1';
@@ -838,7 +892,7 @@ const SWIPE_DROP_THRESHOLD = 60; // これ以上下に動いたら「ハード�
 const SWIPE_DROP_MAX_TIME = 300; // ハードドロップとみなす、フリックの最大時間(ミリ秒)
 
 canvas.addEventListener('touchstart', (event) => {
-	if (isGameOver) return;
+	if (isGameOver || isClearing) return;
 	const touch = event.touches[0];
 	touchStartX = touch.clientX;
 	touchStartY = touch.clientY;
@@ -846,7 +900,7 @@ canvas.addEventListener('touchstart', (event) => {
 });
 
 canvas.addEventListener('touchend', (event) => {
-	if (isGameOver) return;
+	if (isGameOver || isClearing) return;
 	const touch = event.changedTouches[0];
 	const deltaX = touch.clientX - touchStartX;
 	const deltaY = touch.clientY - touchStartY;
@@ -890,7 +944,7 @@ canvas.addEventListener('touchend', (event) => {
 /* ----------------------------------- */
 // 左ボタン
 btnLeft.addEventListener('click', () => {
-	if (isGameOver) return;
+	if (isGameOver || isClearing) return;
 	if (canMove(currentTetromino, -1, 0)) {
 		currentTetromino.x -= 1;
 		resetLockDelayIfNeeded();
@@ -899,7 +953,7 @@ btnLeft.addEventListener('click', () => {
 });
 // 右ボタン
 btnRight.addEventListener('click', () => {
-	if (isGameOver) return;
+	if (isGameOver || isClearing) return;
 	if (canMove(currentTetromino, 1, 0)) {
 		currentTetromino.x += 1;
 		resetLockDelayIfNeeded();
@@ -908,7 +962,7 @@ btnRight.addEventListener('click', () => {
 });
 // ハードドロップボタン
 btnDrop.addEventListener('click', () => {
-	if (isGameOver) return;
+	if (isGameOver || isClearing) return;
 	while (canMove(currentTetromino, 0, 1)) {
 		currentTetromino.y += 1;
 	}
@@ -921,11 +975,11 @@ btnDrop.addEventListener('click', () => {
 });
 // 回転ボタン
 btnRotate.addEventListener('click', () => {
-	if (isGameOver) return; // ゲームオーバーの場合は処理しない
+	if (isGameOver || isClearing) return; // ゲームオーバーの場合は処理しない
 	tryRotate();
 });
 btnRotateCcw.addEventListener('click', () => {
-	if (isGameOver) return;
+	if (isGameOver || isClearing) return;
 	tryRotate('counterclockwise');
 });
 // ソフトドロップボタン
@@ -946,7 +1000,7 @@ btnDown.addEventListener('mouseup', () => {
 });
 // ホールドボタン
 btnHold.addEventListener('click', () => {
-	if (isGameOver) return;
+	if (isGameOver || isClearing) return;
 	holdCurrentTetromino();
 });
 
@@ -996,7 +1050,7 @@ async function submitScoreToServer(newScore: number) {
 		.from('scores')
 		.insert({ score: newScore, player_name: playerName });
 	if (error) {
-		console.error('スコアの送信に失敗しました：', score);
+		console.error('スコアの送信に失敗しました：', error);
 	}
 }
 
@@ -1063,6 +1117,13 @@ async function renderGlobalHighScores(myScore?: number) {
 	}
 }
 
+// 保存してから、ランキングを表示する関数
+async function saveAndShowGlobalRanking(finalScore: number) {
+	await submitScoreToServer(finalScore); // 送信完了までここで待つ
+	await renderGlobalHighScores(finalScore);
+}
+
+
 
 /* ------------------------------------ */
 /* スタートボタン処理
@@ -1072,10 +1133,12 @@ function startGameScreen() {
 	isGameOver = false;
 	startScreen.classList.add('hidden');   // スタート画面を隠す
 	gameScreen.classList.remove('hidden'); // ゲーム画面を表示
+	touchControls.classList.remove('hidden'); // コントロ－ルボタン表示
 
 	// ゲームを開始する
 	draw();
 	drawNextQueue();
+	drawHold();
 	scheduleNextDrop();
 }
 startButton.addEventListener('click', () => {
@@ -1150,7 +1213,6 @@ async function joinRoom() {
 	const roomCode = roomCodeInput.value.trim().toUpperCase();
 
 	if (roomCode === '') {
-		alert('部屋番号を入力してください。');
 		return;
 	}
 
@@ -1208,11 +1270,15 @@ async function startRandomMatch() {
 	const inputValue = playerNameInput.value.trim();
 	playerName = inputValue === '' ? 'プレイヤー' : inputValue;
 
+	// 5分以内に作られた待機中の部屋だけを探す
+	const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+
 	// まず、すでに誰かが待機している部屋がないか探す
 	const { data, error } = await supabase
 		.from('rooms')
 		.select('*')
 		.eq('status', 'waiting') // ステータスがwaitingの行だけに絞る
+		.gte('created_at', fiveMinutesAgo)
 		.limit(1) // 該当する部屋が複数あっても最初の1行だけ
 		.maybeSingle(); // 結果が0件でもエラーせずにnullを返す
 
@@ -1274,11 +1340,29 @@ randomMatchButton.addEventListener('click', () => {
 	startRandomMatch();
 });
 
+
 /* ------------------------------------------------ */
 /* 対戦部屋に接続してリアルタイムやり取りを開始する関数
 /* ------------------------------------------------ */
+// 盤面送信ループを止める関数
+function stopBroadcast() {
+	if (broadcastTimer !== undefined) {
+		clearInterval(broadcastTimer);
+		broadcastTimer = undefined;
+	}
+}
+
 // 対戦部屋のRealtimeチャンネルに接続する関数
 function connectToRoom(roomCode: string) {
+	// 念のため、前のループが残っていたら止めてから始める
+	stopBroadcast();
+
+	broadcastTimer = window.setInterval(() => {
+		if (currentRoomCode !== null) {
+			broadcastMyState();
+		}
+	}, 200);
+
 	// 対戦モードを開始する
 	isVersusMode = true;
 	// 相手の盤面表示エリアを見せる
@@ -1300,12 +1384,17 @@ function connectToRoom(roomCode: string) {
 	realtimeChannel.on('broadcast', { event: 'opponent-game-over' }, () => {
 		// 自分がまだゲームオーバーになっていなければ、勝利とする
 		if (!isGameOver) {
+			// 対戦送信のループを止める
+			stopBroadcast();
+			finishRoom(); // 終わった部屋のステータス変更
 			isGameOver = true;
+			isClearing = false;
+			stopDropLoop();
 			finalScoreSpan.textContent = score.toString();
 			saveHighScore(score);
 			renderHighScores();
-			submitScoreToServer(score);
-			renderGlobalHighScores(score);
+			// ランキングを表示
+			saveAndShowGlobalRanking(score);
 
 			versusResultImage.src = winImg;
 			versusResultImage.alt = '勝利';
@@ -1324,15 +1413,33 @@ function connectToRoom(roomCode: string) {
 	});
 
 	// 実際にチャンネルへの接続を開始する命令
-	realtimeChannel.subscribe();
-
-	// 定期的に自分の状態を送信
-	setInterval(() => {
-		if (currentRoomCode !== null) {
-			broadcastMyState();
+	realtimeChannel.subscribe((status) => {
+		// 接続が完了してから、盤面の送信を始める
+		if (status === 'SUBSCRIBED') {
+			stopBroadcast();
+			broadcastTimer = window.setInterval(() => {
+				broadcastMyState();
+			}, 200);
 		}
-	}, 200); // 0.2秒ごとに送信する
+	});
 }
+
+
+// 対戦が終わった部屋の status を finished にする関数
+// 部屋を作った側(player1)だけが実行する
+async function finishRoom() {
+	if (!isPlayer1 || currentRoomCode === null) return;
+
+	const { error } = await supabase
+		.from('rooms')
+		.update({ status: 'finished' })
+		.eq('room_code', currentRoomCode);
+
+	if (error) {
+		console.error('部屋の終了処理に失敗しました:', error);
+	}
+}
+
 
 // 自分の状態を、対戦相手に送信する関数
 function broadcastMyState() {
@@ -1371,6 +1478,7 @@ function sendGameOver() {
 	});
 }
 
+
 /* ------------------------------------------------ */
 /* 待機画面に関する関数
 /* ------------------------------------------------ */
@@ -1392,7 +1500,7 @@ function showWaitingScreen(roomCode: string | null) {
 
 // 相手の入室(rooms テーブルの status 変化)を監視する関数
 function waitForOpponent(roomCode: string) {
-	const watchChannel = supabase
+	watchChannel = supabase
 		.channel(`waiting-${roomCode}`) // 監視専用のチャンネル
 		.on(
 			// データベースのテーブルの変化そのものを検知する
@@ -1411,9 +1519,29 @@ function waitForOpponent(roomCode: string) {
 					connectToRoom(roomCode);
 					startGameScreen();
 					app.classList.add('match-width'); // 対戦用 maxwidth変更クラス
-					supabase.removeChannel(watchChannel); // 監視をもう不要なので終了する
+					stopWatching(); // ← 監視を終了（下で作る関数）
 				}
 			}
 		)
 		.subscribe();
 }
+
+// 待機中の監視を終了する関数
+function stopWatching() {
+	if (watchChannel !== null) {
+		supabase.removeChannel(watchChannel);
+		watchChannel = null;
+	}
+}
+
+// 待機をキャンセルしてスタート画面へ戻る
+cancelWaitButton.addEventListener('click', () => {
+	stopWatching();
+	finishRoom(); // 部屋を finished にする（player1のときだけ実行される）
+
+	currentRoomCode = null;
+	isPlayer1 = false;
+
+	waitingScreen.classList.add('hidden');
+	startScreen.classList.remove('hidden');
+});
