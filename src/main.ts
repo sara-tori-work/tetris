@@ -431,7 +431,7 @@ function scheduleNextDrop() {
 
 	const normalSpeed = Math.max(600 - (level - 1) * 50, 100); // レベルが上がると50msずつ早くなる　催促100ms
 	const speed = isSoftDropping ? SOFT_DROP_SPEED : normalSpeed; // ソフトドロップなら50ミリ秒、そうでないなら600ミリ秒
-	setTimeout(() => {
+	dropTimer = window.setTimeout(() => {
 		dropTimer = undefined; //実行中のタイマーIDを残さない
 		dropTetromino();
 		scheduleNextDrop(); // 実行後、また次の落下を自分自身で予約する
@@ -659,7 +659,7 @@ function receiveAttack(lines: number) {
 	for (let i = 0; i < lines; i++) {
 		// 1箇所だけ穴が空いた、おじゃまブロックの行を作る
 		const holePosition = Math.floor(Math.random() * BOARD_WIDTH);
-		// 2 = おじゃまブロック専用の印
+		// G = おじゃまブロック専用の印
 		const garbageRow = Array(BOARD_WIDTH).fill('G');
 		// その位置だけ穴を空ける
 		garbageRow[holePosition] = 0;
@@ -1091,7 +1091,7 @@ async function renderGlobalHighScores(myScore?: number) {
 	const scores = await fetchGlobalHighScores();
 	globalHighScoreList.innerHTML = '';
 
-	scores.forEach((entry, index) => {
+	scores.forEach((entry) => {
 		const item = document.createElement('li');
 		// fetchGlobalHighScoresが返してくれる1件ずつのデータから名前とスコアを取り出す
 		item.textContent = `${entry.player_name}: ${entry.score}`;
@@ -1357,12 +1357,6 @@ function connectToRoom(roomCode: string) {
 	// 念のため、前のループが残っていたら止めてから始める
 	stopBroadcast();
 
-	broadcastTimer = window.setInterval(() => {
-		if (currentRoomCode !== null) {
-			broadcastMyState();
-		}
-	}, 200);
-
 	// 対戦モードを開始する
 	isVersusMode = true;
 	// 相手の盤面表示エリアを見せる
@@ -1428,12 +1422,13 @@ function connectToRoom(roomCode: string) {
 // 対戦が終わった部屋の status を finished にする関数
 // 部屋を作った側(player1)だけが実行する
 async function finishRoom() {
-	if (!isPlayer1 || currentRoomCode === null) return;
+	const roomCode = currentRoomCode;
+	if (!isPlayer1 || roomCode === null) return;
 
 	const { error } = await supabase
 		.from('rooms')
 		.update({ status: 'finished' })
-		.eq('room_code', currentRoomCode);
+		.eq('room_code', roomCode);
 
 	if (error) {
 		console.error('部屋の終了処理に失敗しました:', error);
